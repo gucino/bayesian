@@ -144,24 +144,34 @@ plt.contourf(log_s2_list,log_alpha_list,log_p_w_list)
 #check prob
 
 #real value
+
+
+'''
+#check w
+w,cov_w=weight(x_train, y_train, alph,s2)
+log_p_w=(stats.multivariate_normal.logpdf(w,w,cov_w))
+_,log_w,_=energy_function(np.array([s2,alph]),[x_train,y_train])
+print(np.isclose(log_w,log_p_w))
+
+#check alpha
+cov_alph=s2*np.identity(x_train.shape[0])+np.matmul((alph**-1)*x_train,x_train.T)
+log_p_alph=stats.multivariate_normal.logpdf(x=y_train,cov=cov_alph)
+_,_,_log_alph=energy_function(np.array([s2,alph]),[x_train,y_train])
+print(np.isclose(log_p_alph,_log_alph))
+'''
+#check total
 alph=5
 s2=5
-mean_w=np.linalg.inv(np.matmul(x_train.T,x_train)+s2*alph*np.identity(x_train.shape[1]))
-mean_w=np.matmul(mean_w,np.matmul(x_train.T,y_train))
-
-cov_w=np.linalg.inv(np.matmul(x_train.T,x_train)+s2*alph*np.identity(x_train.shape[1]))
-cov_w=s2*cov_w
-
+w,cov_w=weight(x_train, y_train, alph,s2)
+log_p_w=(stats.multivariate_normal.logpdf(w,w,cov_w))
 cov_alph=s2*np.identity(x_train.shape[0])+np.matmul((alph**-1)*x_train,x_train.T)
-log_p_w=(stats.multivariate_normal.logpdf(mean_w,mean_w,cov_w))
-
 log_p_alph=stats.multivariate_normal.logpdf(x=y_train,cov=cov_alph)
+real_log_p=log_p_alph+log_p_w
 
-log_prob=log_p_alph+log_p_w
 
-#calculated
-energy=energy_function(np.array([s2,alph]),[x_train,y_train])
-cal_log_p=-energy
+energy,_,_=energy_function(np.array([s2,alph]),[x_train,y_train])
+log_p=-energy
+print(np.isclose(log_p,real_log_p))
 
 ######################################
 ######################################
@@ -177,6 +187,7 @@ def energy_function(x0,f):
     cov2=cov2_function(x0,f)
     w,cov1=weight(x, y, alph,s2)
     N=x.shape[0]
+    K=x.shape[1]
     inv_cov1=np.linalg.inv(cov1)
     #d
   
@@ -194,7 +205,7 @@ def energy_function(x0,f):
     energy+=a    
     
     #c
-    c=N*np.log(2*np.pi)
+    c=K*np.log(2*np.pi)
     energy+=c
     
     #f
@@ -202,9 +213,13 @@ def energy_function(x0,f):
     energy+=f    
     
     #b
-    c=np.matmul((w-w).T,inv_cov1)
-    c=np.matmul(c,(w-w))
-    energy+=c
+    b=np.matmul((w-w).T,inv_cov1)
+    b=np.matmul(b,(w-w))
+    energy+=b
+    
+    log_w=-0.5*(a+b+c)
+    log_alpha=-0.5*(d+e+f)
+    #return energy/2,log_w,log_alpha
     return energy/2
 
 def grad_function(x0,f):
@@ -293,19 +308,74 @@ def grad_function(x0,f):
 ######################################
 ######################################
 #alph=10
-#x0 = np.random.normal(size=2)
-x0=np.array([5.0,5.0])
+x0 = np.random.normal(size=2)
+##x0=np.array([5.0,5.0])
 print(x0)
 f=[x_train,y_train]
 hmc.gradient_check(x0, energy_function, grad_function, f)
+######################################
+######################################
+######################################
+alph_list=np.linspace(-0.85,-0.6,100)
+s2_list=np.linspace(1.6,1.85,100)
 
+alph_list,s2_list=np.meshgrid(alph_list,s2_list)
+log_p_list=[]
+for i in range(0,alph_list.shape[0]):
+    print(i)
+    row=[]
+    for j in range(0,alph_list.shape[1]):
+        alph=alph_list[i,j]
+        s2=s2_list[i,j]
+        energy=energy_function(np.array([s2,alph]),[x_train,y_train])
+        log_p=-energy
+        row.append(log_p)
+    log_p_list.append(np.array(row))
+
+log_p_list=np.array(log_p_list)
+plt.figure()
+plt.contourf(s2_list,alph_list,log_p_list)
+plt.xlabel("s2")
+plt.ylabel("alph")
 ######################################
 ######################################
 ######################################
 
-  
+np.random.seed(seed=1)  # For reproducibility 
+eps=0.000025
+np.random.seed(seed=1)  
+R = 200
+burn = int(R/10)  
+L = 100  
+x0 = np.random.normal(size=2)
 
 
-w,_=weight(x_train, y_train,S[-1,0],S[-1,1])
+S, reject = hmc.sample(x0, energy_function, grad_function, R, L, eps, burn=burn, checkgrad=True, args=[f])
+'''
+plt.figure()
+plt.plot(S[:, 0], S[:, 1], '.', ms=6, color='CadetBlue', alpha=0.25, zorder=0)  
+plt.scatter(S[-5:, 0], S[-5:, 1],c="red") 
+plt.scatter(S[:5, 0], S[-5:, 1],c="blue")         
+plt.contour(x1, x2, prob, cmap='Reds', linewidths=3, zorder=1)
+'''
+plt.figure()
+plt.title("log posterior")
+plt.contourf(s2_list,alph_list,log_p_list)
+plt.scatter(S[:, 0], S[:, 1],c="red",s=10)
+#plt.plot(S[:, 0], S[:, 1], '.', ms=6, color='CadetBlue', alpha=0.25, zorder=0)
+#plt.contour(S[:, 0], S[:, 1], log_p_list, cmap='Reds', linewidths=3, zorder=1)
+plt.xlabel("s2")
+plt.ylabel("alph")
+######################################
+######################################
+######################################
+w,_=weight(x_train, y_train,np.mean(S[:,1]),np.mean(S[:,0]))
+#w,_=weight(x_train, y_train,S[-1,1],S[-1,0])
+#w,_=weight(x_train, y_train,x0[1],x0[0])
 y_pred_train=np.matmul(x_train,w)
 RMSE_train=np.sqrt(np.mean((y_pred_train-y_train)**2))
+
+y_pred_test=np.matmul(x_test,w)
+RMSE_test=np.sqrt(np.mean((y_pred_test-y_test)**2))
+print("RMSE_train : ",RMSE_train)
+print("RMSE_test : ",RMSE_test)
