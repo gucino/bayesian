@@ -45,11 +45,6 @@ print(np.isclose(np.std(x_test,axis=0),[1]*x_test.shape[1]).all())
 ######################################
 ######################################
 ######################################
-#add bias to input x
-#************************************************
-######################################
-######################################
-######################################
 #exploratory on each variable
 plt.figure()
 plt.suptitle("correlation between each attribute x and target value y")
@@ -120,7 +115,23 @@ x_optimal=x[:,[0,1,2,3,4,5,7]]
 regressor=sm.OLS(endog=y_train,exog=x_optimal).fit()
 regressor.summary()   
 
+#perform regression with optimal x
+regressor=LinearRegression()
 
+#learn
+regressor.fit(x_optimal,y_train)
+
+#see train ans test result
+x=np.append(np.ones((x_test.shape[0],1)).astype(int),x_test,axis=1)
+x_optimal_test=x[:,[0,1,2,3,4,5,7]]
+y_train_pred=regressor.predict(x_optimal)
+y_test_pred=regressor.predict(x_optimal_test)
+
+#compute error
+train_error=np.sqrt(np.mean((y_train_pred-y_train)**2))
+test_error=np.sqrt(np.mean((y_test_pred-y_test)**2))
+print("train error : ",train_error)
+print("test error : ",test_error)
 ####################################################################
 ####################################################################
 ####################################################################
@@ -139,15 +150,33 @@ x_test=test_dataset[:,:-1]
 y_test=test_dataset[:,-1]
 
 
+
+#standardising input x
+from sklearn.preprocessing import StandardScaler
+scaler=StandardScaler()
+x_train=scaler.fit_transform(x_train)
+x_test=scaler.fit_transform(x_test)
+
+#check mean of zero and std 1
+print(np.isclose(np.mean(x_train,axis=0),[0]*x_train.shape[1]).all())
+print(np.isclose(np.mean(x_test,axis=0),[0]*x_test.shape[1]).all())
+print(np.isclose(np.std(x_train,axis=0),[1]*x_train.shape[1]).all())
+print(np.isclose(np.std(x_test,axis=0),[1]*x_test.shape[1]).all())
+
+#add bias to input x
+x_train=np.concatenate((x_train,np.ones(x_train.shape[0])[:,np.newaxis]),axis=1)
+x_test=np.concatenate((x_test,np.ones(x_test.shape[0])[:,np.newaxis]),axis=1)
+
 from scipy import stats
 def alpha(x, y, alph, s2):
     #### **** YOUR CODE HERE **** ####
-    a=np.matmul(x,np.transpose(x))
+    #a=np.matmul(x,np.transpose(x))
     #a=np.matmul(np.transpose(x),x)
-    a=a/alph
-    covariance=(s2*np.identity(a.shape[0]))+a
-    
-    log_p=stats.multivariate_normal.logpdf(y,cov=covariance,allow_singular=True) 
+   # a=a/alph
+    #covariance=(s2*np.identity(a.shape[0]))+a
+    cov_alph=s2*np.identity(x_train.shape[0])+np.matmul((alph**-1)*x_train,x_train.T)
+
+    log_p=stats.multivariate_normal.logpdf(y,cov=cov_alph,allow_singular=True) 
     #log_p=sum(stats.multivariate_normal.logpdf(x,cov=covariance,allow_singular=True)) 
     return log_p
 
@@ -169,11 +198,14 @@ def weight(x, y, alph,s2):
     
     var=s2*np.linalg.inv(a+b)
     
-    log_p=sum(stats.multivariate_normal.logpdf(x,mean=mean,cov=var,allow_singular=True))
+    #log_p=sum(stats.multivariate_normal.logpdf(mean,mean=mean,cov=var,allow_singular=True))
     
-
+    log_p=(stats.multivariate_normal.logpdf(mean,mean,var,allow_singular=True))
     return log_p,mean,var
 
+alph=5
+s2=5
+log_pp=weight(x_train, y_train, alph,s2)[0]+alpha(x_train, y_train, alph, s2)
 def predict(mean_weight,var_weight,x_test):
     mean_pred=np.squeeze(np.matmul(mean_weight[np.newaxis,:],x_test.T))
     var_pred=np.matmul(x_test,np.matmul(var_weight,x_test.T))
@@ -185,9 +217,10 @@ def predict(mean_weight,var_weight,x_test):
     
 best_log_alpha=0
 best_log_s2=0
-log_alpha_list=np.linspace(-20,10,100)
-log_s2_list=np.linspace(-20,10,100)
+log_alpha_list=np.linspace(-25,10,100)
+log_s2_list=np.linspace(-25,10,100)
 log_list=[]
+lop_p_alph_list=[]
 max_value=-999999
 i=0
 for log_s2 in log_s2_list:
@@ -195,6 +228,7 @@ for log_s2 in log_s2_list:
     #print(max_value)
     print(i)
     row_list=[]
+    r=[]
     row_matrix_list=[]
     for log_alpha in log_alpha_list:
         alph=np.exp(log_alpha)
@@ -202,18 +236,19 @@ for log_s2 in log_s2_list:
         
         log_p_alph=alpha(x_train, y_train, alph, s2)
         log_p_w,_,_=weight(x_train, y_train, alph,s2)
-        lgp=log_p_alph*log_p_w
+        lgp=log_p_alph+log_p_w
         #print(lgp)
         row_list.append(lgp)
-        
+        r.append(log_p_alph)
         row_matrix_list.append([log_alpha,log_s2])
         if lgp>max_value:
             max_value=lgp
             best_log_alpha=log_alpha
             best_log_s2=log_s2
     log_list.append(np.array(row_list))
+    lop_p_alph_list.append(np.array(r))
 log_list=np.array(log_list)
-
+lop_p_alph_list=np.array(lop_p_alph_list)
 
 
 print("max value ",max_value) 
@@ -222,6 +257,13 @@ print("best log s2 ",best_log_s2)
 plt.figure()
 plt.title("log p")
 plt.contourf(log_alpha_list,log_s2_list,log_list) 
+plt.scatter(best_log_alpha,best_log_s2,c="red")
+plt.xlabel("log alpha")
+plt.ylabel("log s2")
+
+plt.figure()
+plt.title(" p")
+plt.contourf(log_alpha_list,log_s2_list,np.exp(log_list)) 
 plt.scatter(best_log_alpha,best_log_s2,c="red")
 plt.xlabel("log alpha")
 plt.ylabel("log s2")
