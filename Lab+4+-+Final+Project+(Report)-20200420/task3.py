@@ -29,6 +29,7 @@ plt.ylabel("x2")
 plt.show()
 
 
+
 ######################################
 ######################################
 ######################################
@@ -72,7 +73,7 @@ hmc.gradient_check(x0, energy_function, grad_funtion, f)
 np.random.seed(seed=1)  
 R = 10000 
 burn = int(R/10)  
-L = 20  
+L = 25  
 
 
 
@@ -141,11 +142,21 @@ for i in range(0,10):
 eps=0.487
 S, reject = hmc.sample(x0, energy_function, grad_funtion, R, L, eps, burn=burn, checkgrad=True, args=[f])
 plt.figure()
-plt.plot(S[:, 0], S[:, 1], '.', ms=6, color='CadetBlue', alpha=0.25, zorder=0)  
-plt.scatter(S[-5:, 0], S[-5:, 1],c="red") 
-plt.scatter(S[:5, 0], S[-5:, 1],c="blue")         
+plt.plot(S[:, 0], S[:, 1], '.', ms=6, color='CadetBlue', alpha=0.25, zorder=0)    
 plt.contour(x1, x2, prob, cmap='Reds', linewidths=3, zorder=1)
 
 ######################################
 ######################################
 ######################################
+#plot to see value converge to mean of 0
+num=np.arange(1,S.shape[0]+1)
+value_x1=np.cumsum(S[:,0])/num
+value_x2=np.cumsum(S[:,1])/num
+
+plt.figure()
+plt.title("show convergence of x1")
+plt.plot(num,value_x1)
+
+plt.figure()
+plt.title("show convergence of x2")
+plt.plot(num,value_x2)
