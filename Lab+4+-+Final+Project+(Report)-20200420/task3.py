@@ -57,6 +57,16 @@ def grad_funtion(x,f):
 ######################################
 ######################################
 ######################################
+#validate energy
+x0 = np.random.normal(size=2)
+real_prob=stats.multivariate_normal.pdf(x0,mean,cov)
+prob=np.exp(-(energy_function(x0,0)))
+print("real : ",real_prob)
+print("calculated : ",prob)
+print("difference : ",abs(real_prob-))
+######################################
+######################################
+######################################
 #check gradient
 f=0
 x0 = np.random.normal(size=2)
