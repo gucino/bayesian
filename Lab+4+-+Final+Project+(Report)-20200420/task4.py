@@ -78,86 +78,10 @@ def cov2_function(x0,f):
 ####################################################################
 ####################################################################
 ####################################################################
-#plot to see posterior distribution
-'''
-log_s2_list=np.linspace(-25,10,100)
-log_alpha_list=np.linspace(-25,10,100)
-log_s2_list,log_alpha_list=np.meshgrid(log_s2_list,log_alpha_list)
-
-posterior=[]
-log_p_alph_list=[]
-log_p_w_list=[]
-for row in range(0,log_s2_list.shape[0]):
-    print(row)
-    row_list=[]
-    a_list=[]
-    w_list=[]
-    for col in range(0,log_s2_list.shape[1]):
-        s2=np.exp(log_s2_list[row,col])
-        alph=np.exp(log_alpha_list[row,col])
-        
-        mean_w=np.linalg.inv(np.matmul(x_train.T,x_train)+s2*alph*np.identity(x_train.shape[1]))
-        mean_w=np.matmul(mean_w,np.matmul(x_train.T,y_train))
-        
-        cov_w=np.linalg.inv(np.matmul(x_train.T,x_train)+s2*alph*np.identity(x_train.shape[1]))
-        cov_w=s2*cov_w
-        
-        cov_alph=s2*np.identity(x_train.shape[0])+np.matmul((alph**-1)*x_train,x_train.T)
-        
-        log_p_w=(stats.multivariate_normal.logpdf(mean_w,mean_w,cov_w,allow_singular=True))
-        
-        log_p_alph=stats.multivariate_normal.logpdf(x=y_train,cov=cov_alph,allow_singular=True)
-        
-        log_prob=log_p_alph+log_p_w
-        row_list.append(log_prob)
-        a_list.append(log_p_alph)
-        w_list.append(log_p_w)
-    posterior.append(np.array(row_list))
-    log_p_alph_list.append(np.array(a_list))
-    log_p_w_list.append(np.array(w_list))
-posterior=np.array(posterior)
-log_p_alph_list=np.array(log_p_alph_list)
-log_p_w_list=np.array(log_p_w_list)
-
-
-plt.figure()
-plt.title("log posterior")
-plt.contourf(log_s2_list,log_alpha_list,posterior)
-max_position=np.argmax(posterior)
-
-plt.figure()
-plt.title(" posterior")
-plt.contourf(log_s2_list,log_alpha_list,np.exp(posterior)) 
-
-plt.figure()
-plt.title(" alpha")
-plt.contourf(log_s2_list,log_alpha_list,log_p_alph_list) 
-
-plt.figure()
-plt.title(" weight")
-plt.contourf(log_s2_list,log_alpha_list,log_p_w_list) 
-
-'''
-######################################
-######################################
-######################################
 #check prob
 
 #real value
 
-
-'''
-#check w
-w,cov_w=weight(x_train, y_train, alph,s2)
-log_p_w=(stats.multivariate_normal.logpdf(w,w,cov_w))
-_,log_w,_=energy_function(np.array([s2,alph]),[x_train,y_train])
-print(np.isclose(log_w,log_p_w))
-
-#check alpha
-cov_alph=s2*np.identity(x_train.shape[0])+np.matmul((alph**-1)*x_train,x_train.T)
-log_p_alph=stats.multivariate_normal.logpdf(x=y_train,cov=cov_alph)
-_,_,_log_alph=energy_function(np.array([s2,alph]),[x_train,y_train])
-print(np.isclose(log_p_alph,_log_alph))
 '''
 #check total
 alph=5
@@ -172,7 +96,7 @@ real_log_p=log_p_alph+log_p_w
 energy,_,_=energy_function(np.array([s2,alph]),[x_train,y_train])
 log_p=-energy
 print(np.isclose(log_p,real_log_p))
-
+'''
 ######################################
 ######################################
 ######################################
@@ -182,13 +106,15 @@ def energy_function(x0,f):
     y=f[1]
     s2=x0[0]
     alph=x0[1]
+    w=x0[2:]
     
     energy=0
     cov2=cov2_function(x0,f)
-    w,cov1=weight(x, y, alph,s2)
+    mean_w,cov1=weight(x, y, alph,s2)
     N=x.shape[0]
     K=x.shape[1]
     inv_cov1=np.linalg.inv(cov1)
+
     #d
   
     sign,d=np.linalg.slogdet(cov2)
@@ -203,7 +129,7 @@ def energy_function(x0,f):
     #a
     sign,a=np.linalg.slogdet(cov1)
     energy+=a    
-    
+ 
     #c
     c=K*np.log(2*np.pi)
     energy+=c
@@ -211,14 +137,16 @@ def energy_function(x0,f):
     #f
     f=N*np.log(2*np.pi)
     energy+=f    
-    
+  
     #b
-    b=np.matmul((w-w).T,inv_cov1)
-    b=np.matmul(b,(w-w))
+ 
+    b=np.matmul((w-mean_w).T,inv_cov1)
+    b=np.matmul(b,(w-mean_w))
     energy+=b
-    
-    log_w=-0.5*(a+b+c)
-    log_alpha=-0.5*(d+e+f)
+ 
+
+
+
     #return energy/2,log_w,log_alpha
     return energy/2
 
@@ -227,13 +155,15 @@ def grad_function(x0,f):
     y=f[1]
     s2=x0[0]
     alph=x0[1]
+    w=x0[2:]
     
     output_s2=0
     output_alph=0
+    output_w=[0]*len(w)
     
     cov2=cov2_function(x0,f)
     inv_cov2=np.linalg.inv(cov2)
-    _,cov1=weight(x, y, alph,s2)
+    mu1,cov1=weight(x, y, alph,s2)
     cino=np.matmul(x.T,x)+(s2*alph*np.identity(x.shape[1]))
     inv_cino=np.linalg.inv(cino)
     determinant_cov1=np.linalg.det(cov1)
@@ -257,6 +187,11 @@ def grad_function(x0,f):
     d_alph*=np.trace(np.dot(adj_cov2,term))
     output_alph+=d_alph/2
     
+    #d wrt w1
+    d_w=[0]*len(w)
+    output_w+=d_w
+    
+    
     #####################################
     #####################################
     
@@ -276,6 +211,11 @@ def grad_function(x0,f):
     e_alph=np.matmul(y.T,e_alph)
     e_alph=np.matmul(e_alph,y)
     output_alph+=e_alph/2
+    
+    #e wrt w
+    e_w=[0]*len(w)
+    output_w+=e_w
+    
    
     #####################################
     #####################################
@@ -300,15 +240,162 @@ def grad_function(x0,f):
     term=np.matmul(term,inv_cino)
     
     a_alph*=np.trace(np.matmul(adj_cov1,term))
-    output_alph+=a_alph /2    
+    output_alph+=a_alph /2  
+    
+    #a wrt w
+    a_w=[0]*len(w)
+    output_w+=a_w
     #####################################
     #####################################
-    return np.array([output_s2,output_alph])
+   
+    #b wrt s2
+    output_s2+=b_wrt_s2(x, y, alph,s2,w)/2
+    output_alph+=b_wrt_alph(x, y, alph,s2,w)/2
+    output_w=(b_wrt_w(x, y, alph,s2,w)/2).tolist()
+ 
+    return np.array([output_s2,output_alph]+output_w)
 
 ######################################
 ######################################
+######################################
+def b1_s2_func(x, y, alph,s2):
+    b11=np.matmul(x.T,x)+(s2*alph*np.identity(x.shape[1]).T)
+    output=np.matmul(y.T,x)
+    output=np.matmul(output,np.linalg.inv(b11))
+    output=np.matmul(output,alph*np.identity(x.shape[1]).T)
+    output=np.matmul(output,np.linalg.inv(b11))
+    return output
+
+def b2_s2_func(x, y, alph,s2):
+    mu1,cov1=weight(x, y, alph,s2)
+    b12=np.matmul(x.T,x)+(s2*alph*np.identity(x.shape[1]))
+    
+    inside=np.matmul(s2*(-np.linalg.inv(b12)),alph*np.identity(x.shape[1]))
+    inside=np.matmul(inside,np.linalg.inv(b12))+np.linalg.inv(b12)
+    
+    output=np.matmul(-np.linalg.inv(cov1),inside)
+    output=np.matmul(output,np.linalg.inv(cov1))
+    
+    
+    return output
+
+def b3_s2_func(x, y, alph,s2):
+    b13=np.linalg.inv(np.matmul(x.T,x)+(s2*alph*np.identity(x.shape[1])))
+    
+    output=np.matmul(b13,alph*np.identity(x.shape[1]))
+    output=np.matmul(output,b13)
+    output=np.matmul(output,np.matmul(x.T,y))
+    return output
+
+def b_wrt_s2(x, y, alph,s2,w):
+    mu1,cov1=weight(x, y, alph,s2)
+    b1_s2=b1_s2_func(x, y, alph,s2)
+    first_term=np.matmul(b1_s2,np.linalg.inv(cov1))
+    first_term=np.matmul(first_term,(w-mu1))
+    
+    b2_s2=b2_s2_func(x, y, alph,s2)
+    second_term=np.matmul((w-mu1).T,b2_s2)
+    second_term=np.matmul(second_term,(w-mu1))
+    
+    b3_s2=b3_s2_func(x, y, alph,s2)
+    third_term=np.matmul((w-mu1).T,np.linalg.inv(cov1))
+    third_term=np.matmul(third_term,b3_s2)
+    
+    output=first_term+second_term+third_term
+
+    return output
+
+
+def b1_alph_func(x, y, alph,s2):
+    b11=np.matmul(x.T,x)+(s2*alph*np.identity(x.shape[1]).T)
+    output=np.matmul(y.T,x)
+    output=np.matmul(output,np.linalg.inv(b11))
+    output=np.matmul(output,s2*np.identity(x.shape[1]).T)
+    output=np.matmul(output,np.linalg.inv(b11))
+    return output
+
+def b2_alph_func(x, y, alph,s2):
+    mu1,cov1=weight(x, y, alph,s2)
+    b12=np.matmul(x.T,x)+(s2*alph*np.identity(x.shape[1]))
+    
+    inside=np.matmul(s2*(-np.linalg.inv(b12)),s2*np.identity(x.shape[1]))
+    inside=np.matmul(inside,np.linalg.inv(b12))
+    
+    output=np.matmul(-np.linalg.inv(cov1),inside)
+    output=np.matmul(output,np.linalg.inv(cov1))
+    
+    
+    return output
+
+def b3_alph_func(x, y, alph,s2):
+    b13=np.linalg.inv(np.matmul(x.T,x)+(s2*alph*np.identity(x.shape[1])))
+    
+    output=np.matmul(b13,s2*np.identity(x.shape[1]))
+    output=np.matmul(output,b13)
+    output=np.matmul(output,np.matmul(x.T,y))
+    return output
+
+def b_wrt_alph(x, y, alph,s2,w):
+    mu1,cov1=weight(x, y, alph,s2)
+    b1_alph=b1_alph_func(x, y, alph,s2)
+    first_term=np.matmul(b1_alph,np.linalg.inv(cov1))
+    first_term=np.matmul(first_term,(w-mu1))
+    
+    b2_alph=b2_alph_func(x, y, alph,s2)
+    second_term=np.matmul((w-mu1).T,b2_alph)
+    second_term=np.matmul(second_term,(w-mu1))
+    
+    b3_alph=b3_alph_func(x, y, alph,s2)
+    third_term=np.matmul((w-mu1).T,np.linalg.inv(cov1))
+    third_term=np.matmul(third_term,b3_alph)
+    
+    output=first_term+second_term+third_term
+
+    return output
+
+def b_wrt_w(x, y, alph,s2,w):
+    mu1,cov1=weight(x, y, alph,s2)
+    first_term=np.matmul(np.linalg.inv(cov1),(w-mu1))
+    
+    third_term=np.matmul((w-mu1).T,np.linalg.inv(cov1))
+    return first_term+third_term
+######################################
+######################################
+######################################
+
+def e(x0,f):
+    x=f[0]
+    y=f[1]
+    s2=x0[0]
+    alph=x0[1]
+    w=x0[2:]
+    energy=0
+   
+    mu1,cov1=weight(x, y, alph,s2)
+    b=np.matmul((w-mu1)[:,np.newaxis].T,np.linalg.inv(cov1))
+    b=np.matmul(b,(w-mu1))
+    energy+=b
+    return energy/2
+   
+def g(x0,f):
+    x=f[0]
+    y=f[1]
+    s2=x0[0]
+    alph=x0[1]
+    w=x0[2:]  
+    #output_s2=b_wrt_s2(x, y, alph,s2)[0]
+    
+    output_s2=b_wrt_s2(x, y, alph,s2,w)/2
+    output_alph=b_wrt_alph(x, y, alph,s2,w)/2
+    output_w=(b_wrt_w(x, y, alph,s2,w)/2).tolist()
+    return np.array([output_s2,output_alph]+output_w)
+
+
+######################################
+######################################
+######################################
 #alph=10
-x0 = np.random.normal(size=2)
+x0 = np.random.normal(size=11)
 ##x0=np.array([5.0,5.0])
 print(x0)
 f=[x_train,y_train]
@@ -316,23 +403,28 @@ hmc.gradient_check(x0, energy_function, grad_function, f)
 ######################################
 ######################################
 ######################################
-alph_list=np.linspace(-0.85,-0.6,100)
+
+
+def cal_log_prob(s2_list,alph_list):
+    #alph_list,s2_list=np.meshgrid(alph_list,s2_list)
+    log_p_list=[]
+    i=0
+    for alph in alph_list:
+        row=[]
+        print(i)
+        for s2 in s2_list:
+            energy=energy_function(np.array([s2,alph]),[x_train,y_train])
+            log_p=-energy
+            row.append(log_p)
+        i+=1
+        log_p_list.append(np.array(row))
+    
+    log_p_list=np.array(log_p_list)
+    
+    return log_p_list
+alph_list=np.linspace(-0.85,-0.6,99)
 s2_list=np.linspace(1.6,1.85,100)
-
-alph_list,s2_list=np.meshgrid(alph_list,s2_list)
-log_p_list=[]
-for i in range(0,alph_list.shape[0]):
-    print(i)
-    row=[]
-    for j in range(0,alph_list.shape[1]):
-        alph=alph_list[i,j]
-        s2=s2_list[i,j]
-        energy=energy_function(np.array([s2,alph]),[x_train,y_train])
-        log_p=-energy
-        row.append(log_p)
-    log_p_list.append(np.array(row))
-
-log_p_list=np.array(log_p_list)
+log_p_list=cal_log_prob(s2_list,alph_list)
 plt.figure()
 plt.contourf(s2_list,alph_list,log_p_list)
 plt.xlabel("s2")
@@ -342,30 +434,52 @@ plt.ylabel("alph")
 ######################################
 
 np.random.seed(seed=1)  # For reproducibility 
-eps=0.000025
+#eps=0.000025
+eps=0.00005
 np.random.seed(seed=1)  
-R = 200
+R = 100
 burn = int(R/10)  
 L = 100  
-x0 = np.random.normal(size=2)
+x0 = np.random.normal(size=11)
 
 
 S, reject = hmc.sample(x0, energy_function, grad_function, R, L, eps, burn=burn, checkgrad=True, args=[f])
 '''
 plt.figure()
-plt.plot(S[:, 0], S[:, 1], '.', ms=6, color='CadetBlue', alpha=0.25, zorder=0)  
-plt.scatter(S[-5:, 0], S[-5:, 1],c="red") 
-plt.scatter(S[:5, 0], S[-5:, 1],c="blue")         
-plt.contour(x1, x2, prob, cmap='Reds', linewidths=3, zorder=1)
-'''
-plt.figure()
 plt.title("log posterior")
 plt.contourf(s2_list,alph_list,log_p_list)
 plt.scatter(S[:, 0], S[:, 1],c="red",s=10)
-#plt.plot(S[:, 0], S[:, 1], '.', ms=6, color='CadetBlue', alpha=0.25, zorder=0)
-#plt.contour(S[:, 0], S[:, 1], log_p_list, cmap='Reds', linewidths=3, zorder=1)
 plt.xlabel("s2")
 plt.ylabel("alph")
+'''
+######################################
+######################################
+######################################
+s2_list=S[:, 0]
+alph_list=S[:, 1]
+log_p_list=cal_log_prob(s2_list,alph_list)
+
+plt.figure()
+plt.title("log posterior")
+plt.contourf(s2_list,alph_list,log_p_list)
+plt.scatter(s2_list, alph_list,c="red",s=10)
+plt.xlabel("s2")
+plt.ylabel("alph")
+######################################
+######################################
+######################################
+#plot to see converge of value
+num_list=np.arange(1,s2_list.shape[0]+1)
+s2_list=np.cumsum(s2_list)/num_list
+alph_list=np.cumsum(alph_list)/num_list
+
+plt.figure()
+plt.title("converge of s2 value")
+plt.plot(num_list,s2_list)
+
+plt.figure()
+plt.title("converge of alpha value")
+plt.plot(num_list,alph_list)
 ######################################
 ######################################
 ######################################

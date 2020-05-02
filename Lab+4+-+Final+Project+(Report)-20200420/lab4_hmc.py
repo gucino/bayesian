@@ -159,7 +159,7 @@ def sample(x, energy_func, energy_grad, R, L, epsilon0, burn=0,
     #
     for n in range(-burn, R):
         #
-        #print("n : ",n)
+        print("n : ",n)
         if n in ten_percent_points or n == R - 1:
             p10 = int(10 * n / (R - 1))
             progress = "#" * p10 + "-" * (10 - p10)

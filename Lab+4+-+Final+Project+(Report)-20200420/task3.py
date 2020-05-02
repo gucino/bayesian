@@ -63,7 +63,7 @@ real_prob=stats.multivariate_normal.pdf(x0,mean,cov)
 prob=np.exp(-(energy_function(x0,0)))
 print("real : ",real_prob)
 print("calculated : ",prob)
-print("difference : ",abs(real_prob-))
+print("difference : ",abs(real_prob-prob))
 ######################################
 ######################################
 ######################################
