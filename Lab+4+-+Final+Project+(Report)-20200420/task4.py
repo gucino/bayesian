@@ -404,7 +404,7 @@ hmc.gradient_check(x0, energy_function, grad_function, f)
 ######################################
 ######################################
 
-
+'''
 def cal_log_prob(s2_list,alph_list):
     #alph_list,s2_list=np.meshgrid(alph_list,s2_list)
     log_p_list=[]
@@ -429,6 +429,7 @@ plt.figure()
 plt.contourf(s2_list,alph_list,log_p_list)
 plt.xlabel("s2")
 plt.ylabel("alph")
+'''
 ######################################
 ######################################
 ######################################
@@ -437,7 +438,7 @@ np.random.seed(seed=1)  # For reproducibility
 #eps=0.000025
 eps=0.00005
 np.random.seed(seed=1)  
-R = 100
+R = 10000
 burn = int(R/10)  
 L = 100  
 x0 = np.random.normal(size=11)
@@ -455,6 +456,7 @@ plt.ylabel("alph")
 ######################################
 ######################################
 ######################################
+'''
 s2_list=S[:, 0]
 alph_list=S[:, 1]
 log_p_list=cal_log_prob(s2_list,alph_list)
@@ -493,3 +495,4 @@ y_pred_test=np.matmul(x_test,w)
 RMSE_test=np.sqrt(np.mean((y_pred_test-y_test)**2))
 print("RMSE_train : ",RMSE_train)
 print("RMSE_test : ",RMSE_test)
+'''
