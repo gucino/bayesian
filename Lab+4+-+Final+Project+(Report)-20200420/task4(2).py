@@ -1,0 +1,213 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sat Apr 25 10:43:14 2020
+
+@author: Tisana
+"""
+
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy import stats
+import lab4_hmc as hmc
+from scipy.special import gamma
+######################################
+######################################
+######################################
+#import dataset
+train_dataset=pd.read_csv("ee-train.csv",header=None).values
+attribute_x_list=train_dataset[0,:-1].tolist()
+traget_y=train_dataset[0,-1]
+
+train_dataset=np.array(train_dataset[1:,:],dtype=np.float64)
+x_train=train_dataset[:,:-1]
+y_train=train_dataset[:,-1]
+
+test_dataset=pd.read_csv("ee-test.csv").values
+x_test=test_dataset[:,:-1]
+y_test=test_dataset[:,-1]
+
+
+#standardising input x
+from sklearn.preprocessing import StandardScaler
+scaler=StandardScaler()
+x_train=scaler.fit_transform(x_train)
+x_test=scaler.fit_transform(x_test)
+
+#add bias
+x_train=np.concatenate((x_train,np.ones(x_train.shape[0])[:,np.newaxis]),axis=1)
+x_test=np.concatenate((x_test,np.ones(x_test.shape[0])[:,np.newaxis]),axis=1)
+
+#parameter
+a0=10**(-2)
+b0=10**(-4)
+
+######################################
+######################################
+######################################
+#check gradient
+def energy_function(x0,f):
+    x=f[0]
+    y=f[1]
+    s2=x0[0]
+    alph=x0[1]
+    w=x0[2:]
+    
+    #common term
+    N=x.shape[0]
+    M=x.shape[1]
+    term=(b0**a0)/gamma(a0)
+    energy=0
+    
+    #a
+  
+    second_term=sum((y-np.matmul(x,w))**2)/(2*s2)
+    a=-0.5*N*np.log(2*np.pi*s2)-second_term
+    energy-=a
+    
+  
+    #b
+    b=0.5*M*np.log((alph/(2*np.pi)))-sum(alph*(w**2)/2)
+    energy-=b
+  
+    #c
+    c=np.log(term)-(a0-1)*np.log(alph)-(b0/alph)
+    energy-=c
+    
+    #d
+    d=np.log(term)+((a0-1)*np.log(s2))-(b0*s2)
+    energy-=d
+
+    #return a,b,c,d,energy
+    return energy
+ 
+######################################
+######################################
+######################################
+#check energy function
+'''
+x0 = np.random.normal(size=11)
+x0[0]=np.exp(x0[0])
+x0[1]=np.exp(x0[1])
+f=[x_train,y_train]
+x=f[0]
+y=f[1]
+s2=x0[0]
+alph=x0[1]
+w=x0[2:]
+
+#a
+a_real=stats.multivariate_normal.logpdf(y,mean=np.matmul(x,w),cov=s2)   
+a=energy_function(x0,f)[0]
+print("check a : ",np.isclose(a,a_real)) 
+
+#b
+b_real=stats.multivariate_normal.logpdf(w,cov=(alph**-1)*np.identity(w.shape[0])) 
+b=energy_function(x0,f)[1]
+print("check b : ",np.isclose(b,b_real))
+
+#c
+c_real=stats.gamma.logpdf(1/alph,a=a0,scale=1/b0)
+c=energy_function(x0,f)[2]
+print("check c : ",np.isclose(c,c_real))
+
+#d
+d_real=stats.gamma.logpdf(s2,a=a0,scale=1/b0)
+d=energy_function(x0,f)[3]
+print("check d : ",np.isclose(d,d_real))
+'''
+######################################
+######################################
+######################################
+def grad_function(x0,f):
+    x=f[0]
+    y=f[1]
+    s2=x0[0]
+    alph=x0[1]
+    w=x0[2:]
+    
+    #common term
+    N=x.shape[0]
+    M=x.shape[1]    
+    output_w=np.array([0]*len(w))
+    output_s2=0
+    output_alph=0
+    
+    #a wrt to w
+    a_w=-2*np.matmul((y-np.matmul(x,w)),-x)   
+    output_w=output_w-(a_w/(2*s2))
+    
+    #a wrt alph
+    a_alph=0
+    output_alph-=a_alph
+    
+    #a wrt s2
+    term=(sum((y-np.matmul(x,w))**2))*(-(s2**-2))
+    a_s2=(-0.5*N/s2)-(term/2)
+    output_s2-=a_s2
+    
+    
+    #b wrt w
+    b_w=-alph*2*w/2
+    output_w=output_w-b_w
+    
+    #b wrt alph
+    b_alph=(M/(2*alph))-sum((w**2))/2
+    output_alph-=b_alph
+    
+    #b wrt s2
+    b_s2=0
+    output_s2-=b_s2
+  
+    
+    #c wrt w
+
+    
+    #c wrt alph
+    c_alph=(-(a0-1)/alph)+(b0/(alph**2))
+    output_alph-=c_alph
+    
+    #c wrt s2
+
+   
+    #d wrt w
+    
+    #d wrt alph
+    
+    #d wrt s2
+    d_s2=((a0-1)/(s2))-b0
+    output_s2-=d_s2
+    
+
+    return np.array([output_s2,output_alph]+output_w.tolist())
+
+
+######################################
+######################################
+######################################
+#check gradient
+x0 = np.random.normal(size=11)
+x0[0]=np.exp(x0[0])
+x0[1]=np.exp(x0[1])
+##x0=np.array([5.0,5.0])
+print(x0)
+f=[x_train,y_train]
+hmc.gradient_check(x0, energy_function, grad_function, f)
+######################################
+######################################
+######################################
+
+
+np.random.seed(seed=1)  # For reproducibility 
+#eps=0.000025
+eps=0.1
+np.random.seed(seed=1)  
+R = 10000
+burn = int(R/10)  
+L = 100  
+x0 = np.random.normal(size=11)
+x0[0]=np.exp(x0[0])
+x0[1]=np.exp(x0[1])
+
+S, reject = hmc.sample(x0, energy_function, grad_function, R, L, eps, burn=burn, checkgrad=True, args=[f])
