@@ -200,9 +200,7 @@ hmc.gradient_check(x0, energy_function, grad_function, f)
 
 
 np.random.seed(seed=1)  # For reproducibility 
-#eps=0.000025
-eps=0.1
-np.random.seed(seed=1)  
+eps=0.0035
 R = 10000
 burn = int(R/10)  
 L = 100  
@@ -211,3 +209,53 @@ x0[0]=np.exp(x0[0])
 x0[1]=np.exp(x0[1])
 
 S, reject = hmc.sample(x0, energy_function, grad_function, R, L, eps, burn=burn, checkgrad=True, args=[f])
+######################################
+######################################
+######################################
+#plot to see convergence of estimate avlue
+s2_list=S[:,0]
+alph_list=S[:,1]
+w_list=S[:,2:]
+num=np.arange(0,s2_list.shape[0])
+
+s2_list=np.cumsum(s2_list)/num
+alph_list=np.cumsum(alph_list)/num
+w1_list=np.cumsum(w_list[:,0])/num
+
+plt.figure()
+plt.title("convergence of s2")
+plt.plot(num,s2_list)
+
+plt.figure()
+plt.title("convergence of alph")
+plt.plot(num,alph_list)
+
+plt.figure()
+plt.title("convergence of w1")
+plt.plot(num,w1_list)
+
+######################################
+######################################
+######################################
+#see RMSE
+
+def RMSE_func(actual,pred):
+    #sqrt_diff=np.mean((actual-pred)**2)
+    sqrt_diff=sum((actual-pred)**2)
+    sqrt_diff=sqrt_diff/actual.shape[0]
+    return np.sqrt(sqrt_diff)
+final_alph=alph_list[-1]
+final_s2=s2_list[-1]
+final_w=w_list.sum(axis=0)/10000
+print("best s2 : ",final_s2)
+print("best alph : ",final_alph)
+print("best w : ",final_w)
+y_pred_train=np.matmul(x_train,final_w)
+y_pred_test=np.matmul(x_test,final_w)
+
+RMSE_train=RMSE_func(y_train,y_pred_train)
+RMSE_test=RMSE_func(y_test,y_pred_test)
+
+print("RMSE train : ",RMSE_train)
+print("RMSE test : ",RMSE_test)
+
