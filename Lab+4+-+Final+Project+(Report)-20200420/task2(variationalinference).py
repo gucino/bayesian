@@ -139,7 +139,7 @@ for i in range(1,x_train.shape[0]+1):
     
     print(i,RMSE_train,RMSE_test)
     
-    
+
 #plot to see result
 plt.figure()
 plt.title("error")
@@ -157,49 +157,89 @@ plt.xlabel("num sample")
 plt.ylabel("log porb")
 plt.show()
 
-plt.figure()
-plt.title("prob")
-plt.plot(np.arange(0,len(log_p_list)),prob_list)
-plt.xlabel("num sample")
-plt.ylabel("log porb")
-plt.show()
+
 
 best_alph=alph
 best_s2=s2
+best_weight=w_n
 print("best alph : ",best_alph)
 print("best s2 : ",best_s2)
+print("best weight : ",best_weight)
 print("RMSE train : ",RMSE_train)
 print("RMSE test : ",RMSE_test)
 
-'''
-#plot to see posterior distribution
-alpha_list,s2_list=np.meshgrid(alpha_list,s2_list)
-log_prob_list=[]
-for i in range(0,s2_list.shape[0]):
-    row=[]
+######################################
+######################################
+######################################
+#plot posterior and log marginal likelihood
+def energy_function(x0,ff):
+    x=ff[0]
+    y=ff[1]
+    s2=x0[0]
+    alph=x0[1]
+    w=x0[2:]
+    a0=10**(-2)
+    b0=10**(-4)
+    #common term
+    N=x.shape[0]
+    M=x.shape[1]
+    from scipy.special import gamma
+    term=(b0**a0)/gamma(a0)
+    energy=0
+    
+    #a
+  
+    second_term=sum((y-np.matmul(x,w))**2)/(2*s2)
+    a=-0.5*N*np.log(2*np.pi*s2)-second_term
+    energy-=a
+    
+  
+    #b
+    b=0.5*M*np.log((alph/(2*np.pi)))-sum(alph*(w**2)/2)
+    energy-=b
+  
+    #c
+    c=np.log(term)-(a0-1)*np.log(alph)-(b0/alph)
+    energy-=c
+    
+    #d
+    d=np.log(term)+((a0-1)*np.log(s2))-(b0*s2)
+    energy-=d
+
+    #return a,b,c,d,energy
+    return energy
+
+def log_posterior(x0,f):
+    log_p=-energy_function(x0,f)
+    return log_p
+
+alpha_list=np.linspace(0,1,100)
+s2_list=np.linspace(0,60,100)
+log_posterior_list=[]
+i=0
+for alph in alpha_list:
+    i+=1
     print(i)
-    for j in range(0,s2_list.shape[0]):
-        s2=s2_list[i,j]
-        alph=alpha_list[i,j]
+    p_s2=[]
+    for s2 in s2_list:
+
         
-        _,w_n,v_n,_,_,_=\
-        update_w_and_lambda(a_n_alph,b_n_alph,x_train,y_train)
-        
-        #find prob
-        prob_w=stats.multivariate_normal.pdf(w_n,w_n,v_n)
-        prob_alph=stats.gamma.pdf(x=alph,a=a_n_alph,scale=1/b_n_alph)
-        prob_lambda=stats.gamma.pdf(x=lam,a=a_n_lambda,scale=1/b_n_lambda)
-        total_prob=prob_w*prob_lambda*prob_alph
-        row.append(np.log(total_prob))
-    log_prob_list.append(np.array(row))
-log_prob_list=np.array(log_prob_list)
+        x0=[s2,alph]+best_weight.tolist()
+        x0=np.array(x0)
+        log_prob=log_posterior(x0,[x_train,y_train])
+      
+        p_s2.append(log_prob)
+
+
+    log_posterior_list.append(np.array(p_s2))
+log_posterior_list=np.array(log_posterior_list)
+
 
 plt.figure()
-plt.title("posterior")
-plt.contourf(alpha_list,s2_list,log_prob_list)
-plt.scatter(alph,s2,c="red")
-
-
-'''
-
+plt.title("log posterior lnP(w,α,s2|y)")
+plt.contourf(s2_list,alpha_list,log_posterior_list)
+plt.colorbar()
+plt.scatter(best_s2,best_alph,c="red")
+plt.xlabel(" s2")
+plt.ylabel(" alph")
 

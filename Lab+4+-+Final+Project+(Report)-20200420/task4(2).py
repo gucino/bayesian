@@ -101,21 +101,23 @@ w=x0[2:]
 a_real=stats.multivariate_normal.logpdf(y,mean=np.matmul(x,w),cov=s2)   
 a=energy_function(x0,f)[0]
 print("check a : ",np.isclose(a,a_real)) 
+print(a,a_real,abs(a-a_real))
 
 #b
 b_real=stats.multivariate_normal.logpdf(w,cov=(alph**-1)*np.identity(w.shape[0])) 
 b=energy_function(x0,f)[1]
 print("check b : ",np.isclose(b,b_real))
-
+print(b,b_real,abs(b_real-b))
 #c
 c_real=stats.gamma.logpdf(1/alph,a=a0,scale=1/b0)
 c=energy_function(x0,f)[2]
 print("check c : ",np.isclose(c,c_real))
-
+print(c,c_real,abs(c_real-c))
 #d
 d_real=stats.gamma.logpdf(s2,a=a0,scale=1/b0)
 d=energy_function(x0,f)[3]
 print("check d : ",np.isclose(d,d_real))
+print(d,d_real,abs(d_real-d))
 '''
 ######################################
 ######################################
@@ -259,3 +261,38 @@ RMSE_test=RMSE_func(y_test,y_pred_test)
 print("RMSE train : ",RMSE_train)
 print("RMSE test : ",RMSE_test)
 
+######################################
+######################################
+######################################
+#plot posterior
+def log_posterior(x0,f):
+    log_p=-energy_function(x0,f)
+    return log_p
+
+log_posterior_list=[]
+i=0
+for alph in alph_list[-100:]:
+    i+=1
+    print(i)
+    p_s2=[]
+    for s2 in s2_list[-100:]:
+
+        
+        x0=[s2,alph]+final_w.tolist()
+        x0=np.array(x0)
+        log_prob=log_posterior(x0,[x_train,y_train])
+      
+        p_s2.append(log_prob)
+
+
+    log_posterior_list.append(np.array(p_s2))
+log_posterior_list=np.array(log_posterior_list)
+
+
+plt.figure()
+plt.title("log posterior lnP(w,α,s2|y)")
+plt.contourf(s2_list[-100:],alph_list[-100:],log_posterior_list)
+plt.colorbar()
+plt.scatter(final_s2,final_alph,c="red")
+plt.xlabel(" s2")
+plt.ylabel(" alph")

@@ -85,28 +85,12 @@ print("max log likeihood ",max_lgp)
 print("best log alpha ",best_log_alpha," | best alpha : ",best_alph)
 print("best log s2 ",best_log_s2," | best s2 : ",best_s2)
 
-
-log_alpha_list,log_s2_list=np.meshgrid(log_alpha_list,log_s2_list)
-plt.figure()
-plt.title("ln(p(y|α,s2))")
-plt.contourf(log_s2_list,log_alpha_list,log_list) 
-plt.scatter(best_log_s2,best_log_alpha,c="red")
-plt.xlabel("log alpha")
-plt.ylabel("log s2") 
-
-plt.figure()
-plt.title("p(y|α,s2)")
-plt.contourf(log_s2_list,log_alpha_list,np.exp(log_list) )
-plt.scatter(best_log_s2,best_log_alpha,c="red")
-plt.xlabel("log alpha")
-plt.ylabel("log s2") 
-
 ######################################
 ######################################
 ######################################
-#see the affect of regularization parameter
 
-#prediction
+
+#find optimal weight
 def weight(x, y, alph,s2):
     #
     #### **** YOUR CODE HERE **** ####
@@ -124,6 +108,117 @@ def weight(x, y, alph,s2):
     
     var=s2*np.linalg.inv(a+b)
     return mean,var
+optimal_weight=weight(x_train, y_train, best_alph,best_s2)[0]
+print("optimal weight : ",optimal_weight)
+######################################
+######################################
+######################################
+#plot posterior and log marginal likelihood
+def energy_function(x0,ff):
+    x=ff[0]
+    y=ff[1]
+    s2=x0[0]
+    alph=x0[1]
+    w=x0[2:]
+    a0=10**(-2)
+    b0=10**(-4)
+    #common term
+    N=x.shape[0]
+    M=x.shape[1]
+    from scipy.special import gamma
+    term=(b0**a0)/gamma(a0)
+    energy=0
+    
+    #a
+  
+    second_term=sum((y-np.matmul(x,w))**2)/(2*s2)
+    a=-0.5*N*np.log(2*np.pi*s2)-second_term
+    energy-=a
+    
+  
+    #b
+    b=0.5*M*np.log((alph/(2*np.pi)))-sum(alph*(w**2)/2)
+    energy-=b
+  
+    #c
+    c=np.log(term)-(a0-1)*np.log(alph)-(b0/alph)
+    energy-=c
+    
+    #d
+    d=np.log(term)+((a0-1)*np.log(s2))-(b0*s2)
+    energy-=d
+
+    #return a,b,c,d,energy
+    return energy
+
+def log_posterior(x0,f):
+    log_p=-energy_function(x0,f)
+    return log_p
+
+log_posterior_list=[]
+p_alph=[]
+marginal_log_likelihood_list=[]
+weight_list=[]
+i=0
+for log_alph in log_alpha_list:
+    i+=1
+    print(i)
+    p_s2=[]
+    lgp_list=[]
+    for log_s2 in log_s2_list:
+        s2=np.exp(log_s2)
+        alph=np.exp(log_alph)
+        
+        x0=[s2,alph]+optimal_weight.tolist()
+        x0=np.array(x0)
+        lgp=log_marginal_likelihood(x_train,y_train,alph,s2)
+        log_prob=log_posterior(x0,[x_train,y_train])
+      
+        p_s2.append(log_prob)
+        lgp_list.append(lgp)
+
+    p_alph.append(np.array(p_s2))
+    marginal_log_likelihood_list.append(np.array(lgp_list))
+    w=weight(x_train, y_train, alph,s2)[0]
+    weight_list.append(w)
+marginal_log_likelihood_list=np.array(marginal_log_likelihood_list)
+log_posterior_list=np.array(p_alph)
+weight_list=np.array(weight_list)
+
+plt.figure()
+plt.title("log posterior lnP(w,α,s2|y)")
+plt.contourf(log_s2_list,log_alpha_list,log_posterior_list)
+plt.colorbar()
+plt.scatter(best_log_s2,best_log_alpha,c="red")
+plt.xlabel("log s2")
+plt.ylabel("log alph")
+
+
+plt.figure()
+plt.title("marginal log likelihood lnP(y|α,s2)")
+plt.contourf(log_s2_list,log_alpha_list,marginal_log_likelihood_list)
+plt.colorbar()
+plt.scatter(best_log_s2,best_log_alpha,c="red")
+plt.xlabel("log s2")
+plt.ylabel("log alph")
+
+
+
+plt.figure()
+plt.title("marginal  likelihood P(y|α,s2)")
+plt.contourf(log_s2_list,log_alpha_list,np.exp(marginal_log_likelihood_list))
+plt.colorbar()
+plt.scatter(best_log_s2,best_log_alpha,c="red")
+plt.xlabel("log s2")
+plt.ylabel("log alph")
+
+
+######################################
+######################################
+######################################
+#see the affect of regularization parameter
+
+
 
 def prediction(x_train, y_train, alph,s2,x_test):
     w,_=weight(x_train, y_train, alph,s2)

@@ -96,9 +96,33 @@ test_error=np.sqrt(np.mean((y_test_pred-y_test)**2))
 print("train error : ",train_error)
 print("test error : ",test_error)
 
+c_train="correlation : "+str(np.corrcoef(y_train_pred, y_train)[0][1])
+c_test="correlation : "+str(np.corrcoef(y_test, y_test_pred)[0][1])
+print("correlation train : ", np.corrcoef(y_train_pred, y_train))
+print("correlation test : ", np.corrcoef(y_test, y_test_pred))
+
 #plot
 plt.figure()
 plt.suptitle("correlation between actual y and pedicted y (good prediction)")
+plt.subplot(1,2,1)
+plt.title("train")
+plt.scatter(y_train,y_train_pred,label=c_train,c="red")
+plt.xlabel("actual")
+plt.ylabel("predict")
+#plt.plot(y_train_pred,y_train_pred,label="predict",c="blue")
+plt.legend()
+plt.subplot(1,2,2)
+plt.title("test")
+plt.scatter(y_test,y_test_pred,label=c_test,c="red")
+#plt.plot(y_test_pred,y_test_pred,label="predict",c="blue")
+plt.legend()
+plt.xlabel("actual")
+plt.ylabel("predict")
+
+'''
+#plot
+plt.figure()
+plt.suptitle("correlation between actual y and pedicted y (bad prediction)")
 plt.subplot(1,2,1)
 plt.title("train")
 plt.scatter(y_train,y_train,label="actual",c="red")
@@ -109,21 +133,8 @@ plt.title("test")
 plt.scatter(y_test,y_test,label="actual",c="red")
 plt.plot(y_test_pred,y_test_pred,label="predict",c="blue")
 plt.legend()
+'''
 
-
-#plot
-plt.figure()
-plt.suptitle("correlation between actual y and pedicted y (bad prediction)")
-plt.subplot(1,2,1)
-plt.title("train")
-plt.scatter(y_train,y_train,label="actual",c="red")
-plt.plot(y_train_pred*3,y_train_pred*3,label="predict",c="blue")
-plt.legend()
-plt.subplot(1,2,2)
-plt.title("test")
-plt.scatter(y_test,y_test,label="actual",c="red")
-plt.plot(y_test_pred,y_test_pred,label="predict",c="blue")
-plt.legend()
 ######################################
 ######################################
 ######################################
