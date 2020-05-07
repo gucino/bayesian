@@ -11,6 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import stats
 import lab4_hmc as hmc
+from scipy.special import gamma
 ######################################
 ######################################
 ######################################
@@ -91,7 +92,18 @@ def energy_function(x0,f):
     
     return energy
     
+def test(x0,f):
+    x=f[0]
+    y=f[1]
+    s2=x0[0]
+    alph=x0[1]
+    w=x0[2:]
     
+    p=sigmoid_func(w,x)
+    first_term=np.matmul(y_train*p*np.exp(-np.matmul(x,w)),x)
+    second_term=np.matmul(((1-y)*(p**2)*np.exp(-np.matmul(x,w)))/(1-p),x)
+    a=sum(first_term-second_term)
+ 
 ####################################################################
 ####################################################################
 ####################################################################
@@ -187,10 +199,10 @@ hmc.gradient_check(x0, energy_function, grad_function, f)
 
 
 np.random.seed(seed=1)  # For reproducibility 
-eps=0.00028
-R = 100000
+eps=0
+R = 10000
 burn = int(R/10)  
-L = 100  
+L = 100
 x0 = np.random.normal(size=11)
 x0[0]=np.exp(x0[0])
 x0[1]=np.exp(x0[1])
