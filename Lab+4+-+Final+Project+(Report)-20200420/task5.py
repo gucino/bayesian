@@ -92,17 +92,7 @@ def energy_function(x0,f):
     
     return energy
     
-def test(x0,f):
-    x=f[0]
-    y=f[1]
-    s2=x0[0]
-    alph=x0[1]
-    w=x0[2:]
-    
-    p=sigmoid_func(w,x)
-    first_term=np.matmul(y_train*p*np.exp(-np.matmul(x,w)),x)
-    second_term=np.matmul(((1-y)*(p**2)*np.exp(-np.matmul(x,w)))/(1-p),x)
-    a=sum(first_term-second_term)
+
  
 ####################################################################
 ####################################################################
@@ -199,7 +189,7 @@ hmc.gradient_check(x0, energy_function, grad_function, f)
 
 
 np.random.seed(seed=1)  # For reproducibility 
-eps=0
+eps=0.00028
 R = 10000
 burn = int(R/10)  
 L = 100
@@ -257,6 +247,193 @@ y_pred_train[y_pred_train>threshold]=1
 y_pred_train[y_pred_train<=threshold]=0
 
 y_pred_test=sigmoid_func(final_w,x_test)
+y_pred_test[y_pred_test>threshold]=1
+y_pred_test[y_pred_test<=threshold]=0
+
+train_accuracy=accuracy_func(y_pred_train,y_train_binary)
+test_accuracy=accuracy_func(y_pred_test,y_test_binary)
+
+print("accuracy train : ",train_accuracy)
+print("accuracy test : ",test_accuracy)
+
+
+####################################################################
+####################################################################
+####################################################################
+
+def s(w,x,e):
+    z=np.matmul(x,w)+e
+    output=1/(1+np.exp(-z))
+    return output
+
+def e(x0,f):
+    x=f[0]
+    y=f[1]
+    s2=x0[0]
+    alph=x0[1]
+    w=x0[2:-1]
+    ee=x0[-1]
+    energy=0
+    term=(b0**a0)/gamma(a0)
+    N=x.shape[0]
+    M=x.shape[1]  
+    #a
+    p=s(w,x,ee)
+    a=sum((y*np.log(p))+((1-y)*np.log(1-p)))
+    energy-=a
+
+    #b
+    b=0.5*M*np.log((alph/(2*np.pi)))-sum(alph*(w**2)/2)
+    energy-=b
+  
+    #c
+    c=np.log(term)-(a0-1)*np.log(alph)-(b0/alph)
+    energy-=c
+    
+    #d
+    d=np.log(term)+((a0-1)*np.log(s2))-(b0*s2)
+    energy-=d
+    
+    #noise term
+    noise=(-0.5*np.log(2*np.pi))-(ee**2)/2
+    energy-=noise
+    
+    return energy
+def g(x0,f):
+    x=f[0]
+    y=f[1]
+    s2=x0[0]
+    alph=x0[1]
+    w=x0[2:-1]    
+    ee=x0[-1]
+   #common term
+    N=x.shape[0]
+    M=x.shape[1]    
+    output_w=np.array([0]*len(w))
+    output_s2=0
+    output_alph=0  
+    output_e=0
+    
+    #a wrt w
+    p=s(w,x,ee)
+    a_w=np.matmul((y-p),x)
+    output_w=output_w-a_w  
+    
+    #a wrt ee
+    a_e=sum(y-p)
+    output_e=output_e-a_e      
+
+    #b wrt w
+    b_w=-alph*2*w/2
+    output_w=output_w-b_w
+    
+    #b wrt alph
+    b_alph=(M/(2*alph))-sum((w**2))/2
+    output_alph-=b_alph
+    
+    #b wrt s2
+    b_s2=0
+    output_s2-=b_s2
+  
+    
+    #c wrt w
+
+    
+    #c wrt alph
+    c_alph=(-(a0-1)/alph)+(b0/(alph**2))
+    output_alph-=c_alph
+    
+    #c wrt s2
+
+   
+    #d wrt w
+    
+    #d wrt alph
+    
+    #d wrt s2
+    d_s2=((a0-1)/(s2))-b0
+    output_s2-=d_s2
+    
+    #noise wrt ee
+    noise_e=-ee
+    output_e=output_e-noise_e
+    
+    
+    return np.array([output_s2,output_alph]+output_w.tolist()+[output_e])
+
+x0 = np.random.normal(size=12)
+x0[0]=np.exp(x0[0])
+x0[1]=np.exp(x0[1])
+##x0=np.array([5.0,5.0])
+print(x0)
+f=[x_train,y_train_binary]
+hmc.gradient_check(x0, e, g, f)
+
+####################################################################
+####################################################################
+####################################################################
+
+np.random.seed(seed=1)  # For reproducibility 
+eps=0.0003
+R = 20000
+burn = int(R/10)  
+L = 100
+x0 = np.random.normal(size=12)
+x0[0]=np.exp(x0[0])
+x0[1]=np.exp(x0[1])
+
+S, reject = hmc.sample(x0, e, g, R, L, eps, burn=burn, checkgrad=True, args=[f])
+
+
+####################################################################
+####################################################################
+####################################################################
+#plot to see convergence of estimate avlue
+s2_list=S[:,0]
+alph_list=S[:,1]
+w_list=S[:,2:-1]
+e_list=S[:,-1]
+num=np.arange(1,s2_list.shape[0]+1)
+
+s2_list=np.cumsum(s2_list)/num
+alph_list=np.cumsum(alph_list)/num
+w1_list=np.cumsum(w_list[:,0])/num
+e_list=np.cumsum(e_list)/num
+
+plt.figure()
+plt.title("convergence of s2")
+plt.plot(num,s2_list)
+
+plt.figure()
+plt.title("convergence of alph")
+plt.plot(num,alph_list)
+
+plt.figure()
+plt.title("convergence of w1")
+plt.plot(num,w1_list)
+
+plt.figure()
+plt.title("convergence of e")
+plt.plot(num,e_list)
+    
+#see accuracy
+final_alph=alph_list[-1]
+final_s2=s2_list[-1]
+final_w=w_list.sum(axis=0)/num[-1]
+final_e=e_list[-1]
+
+print("best s2 : ",final_s2)
+print("best alph : ",final_alph)
+print("best w : ",final_w)
+print("best e : ",final_e)
+
+threshold=0.5
+
+y_pred_train=s(final_w,x_train,final_e)
+y_pred_train[y_pred_train>threshold]=1
+y_pred_train[y_pred_train<=threshold]=0
+
+y_pred_test=s(final_w,x_test,final_e)
 y_pred_test[y_pred_test>threshold]=1
 y_pred_test[y_pred_test<=threshold]=0
 
