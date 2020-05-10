@@ -189,7 +189,7 @@ hmc.gradient_check(x0, energy_function, grad_function, f)
 
 
 np.random.seed(seed=1)  # For reproducibility 
-eps=0.00028
+eps=0.00038
 R = 10000
 burn = int(R/10)  
 L = 100
@@ -256,11 +256,45 @@ test_accuracy=accuracy_func(y_pred_test,y_test_binary)
 print("accuracy train : ",train_accuracy)
 print("accuracy test : ",test_accuracy)
 
+######################################
+######################################
+######################################
+#plot posterior
+def log_posterior(x0,f):
+    log_p=-energy_function(x0,f)
+    return log_p
 
-####################################################################
-####################################################################
-####################################################################
+log_posterior_list=[]
+i=0
+for alph in alph_list[-100:]:
+    i+=1
+    print(i)
+    p_s2=[]
+    for s2 in s2_list[-100:]:
 
+        
+        x0=[s2,alph]+final_w.tolist()
+        x0=np.array(x0)
+        log_prob=log_posterior(x0,[x_train,y_train])
+      
+        p_s2.append(log_prob)
+
+
+    log_posterior_list.append(np.array(p_s2))
+log_posterior_list=np.array(log_posterior_list)
+
+
+plt.figure()
+plt.title("log posterior lnP(w,α,s2|y)")
+plt.contourf(s2_list[-100:],alph_list[-100:],log_posterior_list)
+plt.colorbar()
+plt.scatter(final_s2,final_alph,c="red")
+plt.xlabel(" s2")
+plt.ylabel(" alph")
+####################################################################
+####################################################################
+####################################################################
+'''
 def s(w,x,e):
     z=np.matmul(x,w)+e
     output=1/(1+np.exp(-z))
@@ -374,11 +408,11 @@ hmc.gradient_check(x0, e, g, f)
 ####################################################################
 
 np.random.seed(seed=1)  # For reproducibility 
-eps=0.0003
-R = 20000
+eps=0.00028
+R = 10000
 burn = int(R/10)  
 L = 100
-x0 = np.random.normal(size=12)
+x0 = np.random.normal(size=11)
 x0[0]=np.exp(x0[0])
 x0[1]=np.exp(x0[1])
 
@@ -442,3 +476,4 @@ test_accuracy=accuracy_func(y_pred_test,y_test_binary)
 
 print("accuracy train : ",train_accuracy)
 print("accuracy test : ",test_accuracy)
+'''
