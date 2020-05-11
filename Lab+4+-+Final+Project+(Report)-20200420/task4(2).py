@@ -46,7 +46,7 @@ b0=10**(-4)
 ######################################
 ######################################
 ######################################
-#check gradient
+#energy function
 def energy_function(x0,f):
     x=f[0]
     y=f[1]
@@ -60,13 +60,11 @@ def energy_function(x0,f):
     term=(b0**a0)/gamma(a0)
     energy=0
     
-    #a
-  
+    #a  
     second_term=sum((y-np.matmul(x,w))**2)/(2*s2)
     a=-0.5*N*np.log(2*np.pi*s2)-second_term
     energy-=a
-    
-  
+      
     #b
     b=0.5*M*np.log((alph/(2*np.pi)))-sum(alph*(w**2)/2)
     energy-=b
@@ -78,8 +76,7 @@ def energy_function(x0,f):
     #d
     d=np.log(term)+((a0-1)*np.log(s2))-(b0*s2)
     energy-=d
-
-    #return a,b,c,d,energy
+    
     return energy
  
 ######################################
@@ -128,60 +125,37 @@ def grad_function(x0,f):
     s2=x0[0]
     alph=x0[1]
     w=x0[2:]
-    
     #common term
     N=x.shape[0]
     M=x.shape[1]    
     output_w=np.array([0]*len(w))
     output_s2=0
     output_alph=0
-    
     #a wrt to w
     a_w=-2*np.matmul((y-np.matmul(x,w)),-x)   
     output_w=output_w-(a_w/(2*s2))
-    
     #a wrt alph
     a_alph=0
     output_alph-=a_alph
-    
     #a wrt s2
     term=(sum((y-np.matmul(x,w))**2))*(-(s2**-2))
     a_s2=(-0.5*N/s2)-(term/2)
     output_s2-=a_s2
-    
-    
     #b wrt w
     b_w=-alph*2*w/2
     output_w=output_w-b_w
-    
     #b wrt alph
     b_alph=(M/(2*alph))-sum((w**2))/2
     output_alph-=b_alph
-    
     #b wrt s2
     b_s2=0
     output_s2-=b_s2
-  
-    
-    #c wrt w
-
-    
     #c wrt alph
     c_alph=(-(a0-1)/alph)+(b0/(alph**2))
     output_alph-=c_alph
-    
-    #c wrt s2
-
-   
-    #d wrt w
-    
-    #d wrt alph
-    
     #d wrt s2
     d_s2=((a0-1)/(s2))-b0
     output_s2-=d_s2
-    
-
     return np.array([output_s2,output_alph]+output_w.tolist())
 
 

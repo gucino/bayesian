@@ -44,7 +44,7 @@ x_test=np.concatenate((x_test,np.ones(x_test.shape[0])[:,np.newaxis]),axis=1)
 ######################################
 ######################################
 ######################################
-#marginal likelihood
+#marginal log likelihood
 def log_marginal_likelihood(x,y,alph,s2):
     cov=s2*np.identity(x.shape[0])+np.matmul((alph**-1)*x,x.T)
 

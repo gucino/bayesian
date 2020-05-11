@@ -9,7 +9,7 @@ Created on Mon Apr 20 09:59:35 2020
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.decomposition import PCA
+
 
 ######################################
 ######################################
@@ -89,6 +89,9 @@ regressor.fit(x_train,y_train)
 #see train ans test result
 y_train_pred=regressor.predict(x_train)
 y_test_pred=regressor.predict(x_test)
+
+from sklearn.metrics import mean_squared_error
+mse=mean_squared_error()
 
 #compute error
 train_error=np.sqrt(np.mean((y_train_pred-y_train)**2))
