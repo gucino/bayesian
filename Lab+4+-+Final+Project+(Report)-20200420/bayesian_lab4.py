@@ -90,9 +90,6 @@ regressor.fit(x_train,y_train)
 y_train_pred=regressor.predict(x_train)
 y_test_pred=regressor.predict(x_test)
 
-from sklearn.metrics import mean_squared_error
-mse=mean_squared_error()
-
 #compute error
 train_error=np.sqrt(np.mean((y_train_pred-y_train)**2))
 test_error=np.sqrt(np.mean((y_test_pred-y_test)**2))
